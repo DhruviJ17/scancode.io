@@ -847,8 +847,9 @@ class Run(UUIDPKModel, ProjectRelatedModel, AbstractTaskFieldsModel):
         execution task.
         Stores the `task_id` of the current Run instance for a future use.
         """
-        future = tasks.execute_pipeline_task.apply_async(args=[self.pk])
-        self.init_task_id(future.task_id)
+        future = tasks.execute_pipeline_task(run_pk=self.pk)
+        self.init_task_id(future.id)
+        return future
 
     def init_task_id(self, task_id):
         """

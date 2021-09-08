@@ -78,6 +78,7 @@ INSTALLED_APPS = (
     "django_filters",
     "rest_framework",
     "rest_framework.authtoken",
+    "huey.contrib.djhuey",
 )
 
 MIDDLEWARE = (

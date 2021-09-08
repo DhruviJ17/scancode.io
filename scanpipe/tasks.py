@@ -22,9 +22,8 @@
 
 from django.apps import apps
 
-from celery import shared_task
-from celery.exceptions import SoftTimeLimitExceeded
 from celery.utils.log import get_task_logger
+from huey.contrib.djhuey import db_task
 
 tasks_logger = get_task_logger(__name__)
 
@@ -41,17 +40,16 @@ def get_run_instance(run_pk):
     return run_model.objects.get(pk=run_pk)
 
 
-@shared_task(bind=True)
-def execute_pipeline_task(self, run_pk):
-    task_id = self.request.id
-    info(f"Enter `{self.name}` Task.id={task_id}", run_pk)
+@db_task(context=True)
+def execute_pipeline_task(run_pk, task=None):
+    info(f"Enter `{task.name}` task.id={task.id}", run_pk)
 
     run = get_run_instance(run_pk)
     project = run.project
 
     run.reset_task_values()
     run.set_scancodeio_version()
-    run.set_task_started(task_id)
+    run.set_task_started(task.id)
 
     info(f'Run pipeline: "{run.pipeline_name}" on project: "{project.name}"', run_pk)
 
@@ -59,9 +57,9 @@ def execute_pipeline_task(self, run_pk):
 
     try:
         exitcode, output = pipeline.execute()
-    except SoftTimeLimitExceeded:
-        info("SoftTimeLimitExceeded", run_pk)
-        exitcode, output = 1, "SoftTimeLimitExceeded"
+    except Exception as e:
+        info(str(e), run_pk)
+        exitcode, output = 1, str(e)
 
     info("Update Run instance with exitcode, output, and end_date", run_pk)
     run.set_task_ended(exitcode, output, refresh_first=True)
